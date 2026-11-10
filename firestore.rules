@@ -1,0 +1,37 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 출석 기록 컬렉션 규칙
+    match /attendance/{attendanceId} {
+      // 모든 로그인 사용자는 실시간 출석 현황을 조회할 수 있습니다.
+      allow read: if request.auth != null;
+
+      // 출석 체크 생성: 본인의 uid로 된 문서만 1회 작성 가능합니다.
+      allow create: if request.auth != null 
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.date is string;
+
+      // 출석 기록의 위변조 방지를 위해 수정/삭제는 금지합니다.
+      allow update, delete: if false;
+    }
+
+    // 퀴즈 제출 결과 컬렉션 규칙
+    match /quiz_submissions/{userId} {
+      // 모든 로그인 사용자는 대시보드 통계를 위해 제출 결과를 조회할 수 있습니다.
+      allow read: if request.auth != null;
+
+      // 퀴즈 답안 제출: 본인 계정의 문서만 생성/수정할 수 있습니다.
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      
+      // 제출된 시험 기록 삭제 금지
+      allow delete: if false;
+    }
+
+    // 기본적으로 기타 컬렉션은 접근 차단
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
